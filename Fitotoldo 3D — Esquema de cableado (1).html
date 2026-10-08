@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fitotoldo 3D - Esquema de cableado</title>
+<style>
+  :root {
+    --bg0: #14181a;
+    --bg1: #1c2226;
+    --panel: #20272b;
+    --border: rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.18);
+    --text-primary: #eef1f0;
+    --text-secondary: #a9b2b0;
+    --text-muted: #6f7876;
+    --accent-teal: #3fb98a;
+    --accent-amber: #e0a83f;
+    --accent-blue: #4f9fd8;
+    --accent-coral: #d97757;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: var(--bg0); color: var(--text-primary);
+    font-family: var(--font);
+    overflow: hidden;
+  }
+  #app { position: relative; width: 100%; height: 100vh; min-height: 560px; }
+  #canvas-wrap { position: absolute; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    background: linear-gradient(to bottom, rgba(20,24,26,0.92), rgba(20,24,26,0));
+    pointer-events: none;
+    z-index: 5;
+  }
+  .topbar * { pointer-events: auto; }
+  .title-block h1 {
+    font-size: 15px; font-weight: 600; margin: 0 0 2px;
+    letter-spacing: 0.01em;
+  }
+  .title-block p {
+    font-size: 12px; color: var(--text-secondary); margin: 0;
+  }
+
+  .layer-toggles {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .toggle-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    background: var(--panel);
+    border: 0.5px solid var(--border);
+    border-radius: 999px;
+    font-size: 11px; color: var(--text-secondary);
+    cursor: pointer; user-select: none;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .toggle-chip:hover { border-color: var(--border-strong); }
+  .toggle-chip.active { color: var(--text-primary); border-color: var(--border-strong); }
+  .toggle-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .info-panel {
+    position: absolute; right: 14px; top: 66px; bottom: 96px;
+    width: 260px; max-width: calc(100% - 28px);
+    background: var(--panel);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    overflow-y: auto;
+    z-index: 6;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .info-panel.empty { display: flex; align-items: center; justify-content: center; text-align: center; }
+  .info-panel.empty p { color: var(--text-muted); font-size: 13px; margin: 0; line-height: 1.5; }
+  .info-panel .tag {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 4px; margin-bottom: 10px;
+  }
+  .info-panel h2 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  .info-panel .sub { font-size: 12px; color: var(--text-secondary); margin: 0 0 14px; }
+  .info-row {
+    display: flex; justify-content: space-between; gap: 10px;
+    padding: 8px 0;
+    border-top: 0.5px solid var(--border);
+    font-size: 12px;
+  }
+  .info-row:first-of-type { border-top: none; }
+  .info-row .k { color: var(--text-muted); }
+  .info-row .v { color: var(--text-primary); text-align: right; }
+
+  .bottombar {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 12px 18px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+    background: linear-gradient(to top, rgba(20,24,26,0.92), rgba(20,24,26,0));
+    z-index: 5;
+  }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+  .legend-swatch { width: 10px; height: 3px; border-radius: 2px; }
+  .legend-swatch.dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .hint {
+    font-size: 11px; color: var(--text-muted);
+  }
+
+  .reset-btn {
+    background: var(--panel);
+    border: 0.5px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 11px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .reset-btn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+
+  @media (max-width: 640px) {
+    .info-panel { position: fixed; left: 12px; right: 12px; width: auto; top: auto; bottom: 90px; height: 160px; }
+    .layer-toggles { display: none; }
+    .legend { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="canvas-wrap"></div>
+
+  <div class="topbar">
+    <div class="title-block">
+      <h1>Fitotoldo Angostura-Saylla &mdash; cableado del nodo edge</h1>
+      <p>23.60 m x 9.96 m &middot; arrastra para rotar, rueda para zoom, clic en un sensor</p>
+    </div>
+    <div class="layer-toggles" id="layerToggles"></div>
+  </div>
+
+  <div class="info-panel empty" id="infoPanel">
+    <p>Toca un sensor, el nodo o el tronco de cable<br>para ver sus datos.</p>
+  </div>
+
+  <div class="bottombar">
+    <div class="legend" id="legend"></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="hint" id="hintText">Vista libre</span>
+      <button class="reset-btn" id="resetBtn">Restablecer vista</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function() {
+  // ---------- DATA MODEL (real measurements) ----------
+  var FT_LEN = 23.60;      // largo, m
+  var FT_WID = 9.96;       // ancho, m
+  var WALL_H = 2.70;       // altura pared lateral
+  var RIDGE_H = 4.80;      // altura cumbrera
+  var POST_SPACING = 3.30; // separacion de ejes
+
+  var TRUNK_H = 2.2;       // altura del tronco de cable sobre el poste lateral
+  var NODE = { x: 1.0, y: 0.0, z: WALL_H * 0.4 }; // ESP32 bajo el tanque, esquina de entrada
+
+  var sensors = [
+    { id: 'S1', kind: 'humedad', zone: 'A', x: 4, y: 2.5, label: 'Sensor S1 - humedad de suelo', cable: '~11 m', tipo: 'Analogica (ADC1_CH0)', cableTipo: 'Apantallado 3x22 AWG' },
+    { id: 'S2', kind: 'humedad', zone: 'A', x: 4, y: 7.46, label: 'Sensor S2 - humedad de suelo', cable: '~19 m', tipo: 'Analogica (ADC1_CH1)', cableTipo: 'Apantallado 3x22 AWG' },
+    { id: 'S3', kind: 'humedad', zone: 'B', x: 12, y: 2.5, label: 'Sensor S3 - humedad de suelo', cable: '~23 m', tipo: 'Analogica (ADC1_CH2)', cableTipo: 'Apantallado 3x22 AWG' },
+    { id: 'S4', kind: 'humedad', zone: 'B', x: 12, y: 7.46, label: 'Sensor S4 - humedad de suelo', cable: '~30 m', tipo: 'Analogica (ADC1_CH3)', cableTipo: 'Apantallado 3x22 AWG' },
+    { id: 'S5', kind: 'humedad', zone: 'C', x: 20, y: 2.5, label: 'Sensor S5 - humedad de suelo', cable: '~31 m', tipo: 'Analogica (ADC1_CH4)', cableTipo: 'Apantallado 3x22 AWG' },
+    { id: 'S6', kind: 'humedad', zone: 'C', x: 20, y: 7.46, label: 'Sensor S6 - humedad de suelo', cable: '~38 m', tipo: 'Analogica (ADC1_CH5)', cableTipo: 'Apantallado 3x22 AWG' },
+    { id: 'D1', kind: 'dht22', zone: 'A', x: 4, y: 0.5, onPost: true, label: 'DHT22-1 - temperatura / HR aire', cable: '~7 m', tipo: 'Digital 1-hilo', cableTipo: 'Par trenzado 3 conductores' },
+    { id: 'D2', kind: 'dht22', zone: 'B', x: 12, y: 0.5, onPost: true, label: 'DHT22-2 - temperatura / HR aire', cable: '~17 m', tipo: 'Digital 1-hilo', cableTipo: 'Par trenzado 3 conductores (pull-up 4.7k)' },
+    { id: 'D3', kind: 'dht22', zone: 'C', x: 20, y: 0.5, onPost: true, label: 'DHT22-3 - temperatura / HR aire', cable: '~27 m', tipo: 'Digital 1-hilo', cableTipo: 'Par trenzado 3 conductores (pull-up 3.3k, riesgo de distancia)' },
+    { id: 'BH', kind: 'bh1750', zone: 'nodo', x: 1.0, y: 0.5, onPost: false, atNode: true, label: 'BH1750 - luminosidad', cable: '~0.5 m', tipo: 'I2C', cableTipo: 'Cable 4 conductores, corto junto al nodo' }
+  ];
+
+  var colors = {
+    structure: 0x4a5559,
+    wall: 0x2c3336,
+    ground: 0x2a2420,
+    trunk: 0x3fb98a,
+    drop: 0x6f7876,
+    humedad: 0xe0a83f,
+    dht22: 0xd97757,
+    bh1750: 0x4f9fd8,
+    node: 0x3fb98a
+  };
+
+  // ---------- THREE SETUP ----------
+  var wrap = document.getElementById('canvas-wrap');
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x14181a);
+  scene.fog = new THREE.Fog(0x14181a, 30, 70);
+
+  var camera = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 200);
+
+  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  wrap.appendChild(renderer.domElement);
+
+  var ambient = new THREE.AmbientLight(0xffffff, 0.65);
+  scene.add(ambient);
+  var dir1 = new THREE.DirectionalLight(0xffffff, 0.55);
+  dir1.position.set(10, 18, 10);
+  scene.add(dir1);
+  var dir2 = new THREE.DirectionalLight(0xbcd4e6, 0.25);
+  dir2.position.set(-10, 8, -8);
+  scene.add(dir2);
+
+  // World mapping: X = length (0..23.60), Z = width (0..9.96), Y = height
+  var group = new THREE.Group();
+  scene.add(group);
+
+  // center the model
+  var cx = FT_LEN / 2;
+  var cz = FT_WID / 2;
+
+  function W(x, y, z) { return new THREE.Vector3(x - cx, y, z - cz); }
+
+  // ---- Ground / soil ----
+  var groundGeo = new THREE.PlaneGeometry(FT_LEN + 3, FT_WID + 3);
+  var groundMat = new THREE.MeshStandardMaterial({ color: colors.ground, roughness: 1 });
+  var ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(0, -0.02, 0);
+  group.add(ground);
+
+  // ---- Drip lines (26, simplified as thin dark strips) ----
+  var dripMat = new THREE.LineBasicMaterial({ color: 0x1a1a1a });
+  var nDrip = 26;
+  for (var i = 0; i < nDrip; i++) {
+    var zPos = (FT_WID / (nDrip - 1)) * i;
+    var pts = [W(0.3, 0.01, zPos), W(FT_LEN - 0.3, 0.01, zPos)];
+    var g = new THREE.BufferGeometry().setFromPoints(pts);
+    var line = new THREE.Line(g, dripMat);
+    group.add(line);
+  }
+
+  // ---- Structure: posts along both walls ----
+  var postMat = new THREE.MeshStandardMaterial({ color: colors.structure, roughness: 0.85 });
+  var postRadius = 0.07;
+  var nPosts = Math.round(FT_LEN / POST_SPACING);
+  var postPositions = [];
+  for (var p = 0; p <= nPosts; p++) {
+    var xPos = Math.min(p * POST_SPACING, FT_LEN);
+    postPositions.push(xPos);
+  }
+
+  function addPost(x, z, h) {
+    var geo = new THREE.CylinderGeometry(postRadius, postRadius * 1.1, h, 8);
+    var mesh = new THREE.Mesh(geo, postMat);
+    var w = W(x, h / 2, z);
+    mesh.position.copy(w);
+    group.add(mesh);
+    return mesh;
+  }
+
+  postPositions.forEach(function(xPos) {
+    addPost(xPos, 0.05, WALL_H);
+    addPost(xPos, FT_WID - 0.05, WALL_H);
+  });
+
+  // ridge posts (taller, centered) - simplified, every other bay
+  postPositions.forEach(function(xPos, idx) {
+    if (idx % 1 === 0) {
+      var geo = new THREE.CylinderGeometry(0.05, 0.06, RIDGE_H - WALL_H, 8);
+      var mesh = new THREE.Mesh(geo, postMat);
+      mesh.position.copy(W(xPos, WALL_H + (RIDGE_H - WALL_H) / 2, FT_WID / 2));
+      group.add(mesh);
+    }
+  });
+
+  // ridge beam
+  var ridgeGeo = new THREE.CylinderGeometry(0.04, 0.04, FT_LEN, 8);
+  var ridgeMesh = new THREE.Mesh(ridgeGeo, postMat);
+  ridgeMesh.rotation.z = Math.PI / 2;
+  ridgeMesh.position.copy(W(FT_LEN / 2, RIDGE_H, FT_WID / 2));
+  group.add(ridgeMesh);
+
+  // roof slopes (translucent planes, white plastic)
+  var roofMat = new THREE.MeshStandardMaterial({ color: 0xdfe6e2, transparent: true, opacity: 0.18, side: THREE.DoubleSide, roughness: 1 });
+  function roofSlope(zFrom, zTo, hFrom, hTo) {
+    var shapePts = [
+      W(0, hFrom, zFrom), W(FT_LEN, hFrom, zFrom),
+      W(FT_LEN, hTo, zTo), W(0, hTo, zTo)
+    ];
+    var geo = new THREE.BufferGeometry();
+    var verts = [];
+    shapePts.forEach(function(v) { verts.push(v.x, v.y, v.z); });
+    var idxArr = [0, 1, 2, 0, 2, 3];
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    geo.setIndex(idxArr);
+    geo.computeVertexNormals();
+    var mesh = new THREE.Mesh(geo, roofMat);
+    group.add(mesh);
+  }
+  roofSlope(0, FT_WID / 2, WALL_H, RIDGE_H);
+  roofSlope(FT_WID, FT_WID / 2, WALL_H, RIDGE_H);
+
+  // walls (green mesh upper, white plastic lower) - simplified translucent panels
+  var wallLowMat = new THREE.MeshStandardMaterial({ color: 0xd6ddd8, transparent: true, opacity: 0.12, side: THREE.DoubleSide });
+  var wallHighMat = new THREE.MeshStandardMaterial({ color: 0x2f6a55, transparent: true, opacity: 0.28, side: THREE.DoubleSide });
+
+  function wallPanel(z, mat, hFrom, hTo) {
+    var geo = new THREE.PlaneGeometry(FT_LEN, hTo - hFrom);
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(W(FT_LEN / 2, (hFrom + hTo) / 2, z));
+    group.add(mesh);
+  }
+  wallPanel(0.02, wallLowMat, 0, WALL_H * 0.55);
+  wallPanel(0.02, wallHighMat, WALL_H * 0.55, WALL_H);
+  wallPanel(FT_WID - 0.02, wallLowMat, 0, WALL_H * 0.55);
+  wallPanel(FT_WID - 0.02, wallHighMat, WALL_H * 0.55, WALL_H);
+
+  // end walls (entrance / far end) - very faint
+  var endMat = new THREE.MeshStandardMaterial({ color: 0xd6ddd8, transparent: true, opacity: 0.06, side: THREE.DoubleSide });
+  function endWall(x) {
+    var geo = new THREE.PlaneGeometry(FT_WID, RIDGE_H);
+    var mesh = new THREE.Mesh(geo, endMat);
+    mesh.rotation.y = Math.PI / 2;
+    mesh.position.copy(W(x, RIDGE_H / 2, FT_WID / 2));
+    group.add(mesh);
+  }
+  endWall(0.02);
+  endWall(FT_LEN - 0.02);
+
+  // ---- Node / tank (ESP32) ----
+  var nodeGroup = new THREE.Group();
+  var tankGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.9, 16);
+  var tankMat = new THREE.MeshStandardMaterial({ color: 0x8a8f8c, roughness: 0.6 });
+  var tank = new THREE.Mesh(tankGeo, tankMat);
+  tank.position.copy(W(NODE.x, 1.6, NODE.y + 0.6));
+  nodeGroup.add(tank);
+
+  var boxGeo = new THREE.BoxGeometry(0.22, 0.16, 0.06);
+  var boxMat = new THREE.MeshStandardMaterial({ color: colors.node, emissive: colors.node, emissiveIntensity: 0.25 });
+  var espBox = new THREE.Mesh(boxGeo, boxMat);
+  espBox.position.copy(W(NODE.x, 1.0, NODE.y + 0.6));
+  espBox.userData = { kind: 'node', label: 'ESP32-S3 (nodo edge)', tipo: 'Bajo el tanque, esquina de entrada', extra: 'Reune 6 sensores humedad + 3 DHT22 + BH1750 + rele/valvula' };
+  nodeGroup.add(espBox);
+  group.add(nodeGroup);
+
+  // ---- Trunk cable path (along lateral post, then horizontal) ----
+  var trunkMat = new THREE.LineBasicMaterial({ color: colors.trunk, linewidth: 2 });
+  var trunkPts = [
+    W(NODE.x, 1.0, NODE.y + 0.6),
+    W(NODE.x, TRUNK_H, 0.05),
+    W(FT_LEN - 3.2, TRUNK_H, 0.05)
+  ];
+  var trunkGeo = new THREE.BufferGeometry().setFromPoints(trunkPts);
+  var trunkLine = new THREE.Line(trunkGeo, trunkMat);
+  trunkLine.userData = { kind: 'trunk', label: 'Tronco principal de cableado', tipo: 'Montado sobre poste lateral, h=2.2 m', extra: 'Lleva los 9 cables de sensores en conducto corrugado hasta cada bajada de zona' };
+  group.add(trunkLine);
+
+  // thicker visual: tube along trunk
+  var trunkCurve = new THREE.CatmullRomCurve3(trunkPts);
+  var trunkTubeGeo = new THREE.TubeGeometry(trunkCurve, 32, 0.025, 6, false);
+  var trunkTubeMat = new THREE.MeshStandardMaterial({ color: colors.trunk, emissive: colors.trunk, emissiveIntensity: 0.3 });
+  var trunkTube = new THREE.Mesh(trunkTubeGeo, trunkTubeMat);
+  trunkTube.userData = trunkLine.userData;
+  group.add(trunkTube);
+
+  // ---- Sensor drops + markers ----
+  var interactiveMeshes = [espBox, trunkTube];
+  var zoneX = { A: 4, B: 12, C: 20 };
+
+  sensors.forEach(function(s) {
+    var color = colors[s.kind];
+    var markerGeo = new THREE.SphereGeometry(0.14, 12, 12);
+    var markerMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.35 });
+    var marker = new THREE.Mesh(markerGeo, markerMat);
+
+    var groundY = s.kind === 'humedad' ? 0.05 : (s.onPost ? TRUNK_H : (s.atNode ? 1.15 : 0.05));
+    marker.position.copy(W(s.x, groundY, s.y));
+    marker.userData = {
+      kind: 'sensor', id: s.id, label: s.label, tipo: s.tipo,
+      extra: 'Cable: ' + s.cable + ' - ' + s.cableTipo
+    };
+    group.add(marker);
+    interactiveMeshes.push(marker);
+
+    // drop line from trunk (skip BH1750, at node) and skip DHT22 (on post, no drop)
+    if (s.kind === 'humedad') {
+      var dropMat = new THREE.LineBasicMaterial({ color: colors.drop, transparent: true, opacity: 0.55 });
+      var trunkPoint = W(s.x, TRUNK_H, 0.05);
+      var soilPoint = W(s.x, 0.05, s.y);
+      var midPoint = W(s.x, TRUNK_H, s.y * 0.3);
+      var dpts = [trunkPoint, midPoint, soilPoint];
+      var dgeo = new THREE.BufferGeometry().setFromPoints(dpts);
+      var dline = new THREE.Line(dgeo, dropMat);
+      group.add(dline);
+    }
+
+    // small vertical stub for dht22 (post mount) up from ground to trunk height, for visual anchoring
+    if (s.kind === 'dht22') {
+      var stubMat = new THREE.LineBasicMaterial({ color: colors.drop, transparent: true, opacity: 0.4 });
+      var stubPts = [W(s.x, 0, s.y), W(s.x, TRUNK_H, s.y)];
+      var stubGeo = new THREE.BufferGeometry().setFromPoints(stubPts);
+      group.add(new THREE.Line(stubGeo, stubMat));
+    }
+  });
+
+  // zone label sprites (simple canvas texture)
+  function makeLabelSprite(text, hexColor) {
+    var cnv = document.createElement('canvas');
+    cnv.width = 256; cnv.height = 64;
+    var ctx = cnv.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.fillRect(0, 0, cnv.width, cnv.height);
+    ctx.font = '600 34px -apple-system, sans-serif';
+    ctx.fillStyle = hexColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 128, 32);
+    var tex = new THREE.CanvasTexture(cnv);
+    var mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    var sprite = new THREE.Sprite(mat);
+    sprite.scale.set(1.6, 0.4, 1);
+    return sprite;
+  }
+  ['A', 'B', 'C'].forEach(function(z) {
+    var sprite = makeLabelSprite('Zona ' + z, '#a9b2b0');
+    sprite.position.copy(W(zoneX[z], WALL_H + 0.6, FT_WID / 2));
+    group.add(sprite);
+  });
+
+  // ---- Camera controls (custom orbit, no extra file needed) ----
+  var target = new THREE.Vector3(0, 1.6, 0);
+  var spherical = { radius: 22, theta: Math.PI * 0.32, phi: Math.PI * 0.38 };
+  var isDragging = false;
+  var lastX = 0, lastY = 0;
+
+  function updateCamera() {
+    var r = spherical.radius;
+    var t = spherical.theta;
+    var ph = Math.max(0.15, Math.min(Math.PI * 0.49, spherical.phi));
+    spherical.phi = ph;
+    camera.position.x = target.x + r * Math.sin(ph) * Math.sin(t);
+    camera.position.y = target.y + r * Math.cos(ph);
+    camera.position.z = target.z + r * Math.sin(ph) * Math.cos(t);
+    camera.lookAt(target);
+  }
+  updateCamera();
+
+  var canvas = renderer.domElement;
+  function pointerDown(x, y) { isDragging = true; lastX = x; lastY = y; }
+  function pointerMove(x, y) {
+    if (!isDragging) return;
+    var dx = x - lastX, dy = y - lastY;
+    spherical.theta -= dx * 0.006;
+    spherical.phi -= dy * 0.006;
+    lastX = x; lastY = y;
+    updateCamera();
+  }
+  function pointerUp() { isDragging = false; }
+
+  canvas.addEventListener('mousedown', function(e) { pointerDown(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', function(e) { pointerMove(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', pointerUp);
+  canvas.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) pointerDown(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  canvas.addEventListener('touchmove', function(e) {
+    if (e.touches.length === 1) { pointerMove(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }
+  }, { passive: false });
+  canvas.addEventListener('touchend', pointerUp);
+
+  canvas.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    spherical.radius = Math.max(6, Math.min(45, spherical.radius + e.deltaY * 0.02));
+    updateCamera();
+  }, { passive: false });
+
+  document.getElementById('resetBtn').addEventListener('click', function() {
+    spherical = { radius: 22, theta: Math.PI * 0.32, phi: Math.PI * 0.38 };
+    updateCamera();
+  });
+
+  // ---- Click picking ----
+  var raycaster = new THREE.Raycaster();
+  raycaster.params.Line.threshold = 0.15;
+  var mouse = new THREE.Vector2();
+  var infoPanel = document.getElementById('infoPanel');
+
+  var kindMeta = {
+    sensor_humedad: { tag: 'Humedad de suelo', color: '#e0a83f', bg: 'rgba(224,168,63,0.15)' },
+    sensor_dht22: { tag: 'DHT22 - temp/HR', color: '#d97757', bg: 'rgba(217,119,87,0.15)' },
+    sensor_bh1750: { tag: 'BH1750 - luz', color: '#4f9fd8', bg: 'rgba(79,159,216,0.15)' },
+    node: { tag: 'Nodo edge', color: '#3fb98a', bg: 'rgba(63,185,138,0.15)' },
+    trunk: { tag: 'Cableado', color: '#3fb98a', bg: 'rgba(63,185,138,0.15)' }
+  };
+
+  function sensorMetaKey(id) {
+    if (id === 'BH') return 'sensor_bh1750';
+    if (id && id.indexOf('D') === 0) return 'sensor_dht22';
+    return 'sensor_humedad';
+  }
+
+  function showInfo(userData) {
+    var meta;
+    if (userData.kind === 'sensor') meta = kindMeta[sensorMetaKey(userData.id)];
+    else meta = kindMeta[userData.kind];
+    if (!meta) meta = kindMeta.trunk;
+
+    infoPanel.classList.remove('empty');
+    infoPanel.innerHTML =
+      '<span class="tag" style="color:' + meta.color + ';background:' + meta.bg + '">' + meta.tag + '</span>' +
+      '<h2>' + userData.label + '</h2>' +
+      (userData.tipo ? '<p class="sub">' + userData.tipo + '</p>' : '') +
+      (userData.extra ? '<div class="info-row"><span class="k">Detalle</span><span class="v">' + userData.extra + '</span></div>' : '');
+  }
+
+  function onPick(clientX, clientY) {
+    var rect = canvas.getBoundingClientRect();
+    mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    var hits = raycaster.intersectObjects(interactiveMeshes);
+    if (hits.length > 0) {
+      var obj = hits[0].object;
+      if (obj.userData && obj.userData.kind) showInfo(obj.userData);
+    }
+  }
+
+  var downX = 0, downY = 0;
+  canvas.addEventListener('mousedown', function(e) { downX = e.clientX; downY = e.clientY; });
+  canvas.addEventListener('mouseup', function(e) {
+    var dist = Math.hypot(e.clientX - downX, e.clientY - downY);
+    if (dist < 4) onPick(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('touchend', function(e) {
+    if (e.changedTouches.length === 1) {
+      onPick(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+    }
+  });
+
+  // ---- Layer toggles ----
+  var layers = {
+    structure: { label: 'Estructura', color: '#4a5559', objs: [] },
+    trunk: { label: 'Tronco de cable', color: '#3fb98a', objs: [trunkTube, trunkLine] },
+    humedad: { label: 'Sensores humedad', color: '#e0a83f', objs: [] },
+    dht22: { label: 'DHT22', color: '#d97757', objs: [] },
+    drips: { label: 'Lineas de goteo', color: '#555', objs: [] }
+  };
+
+  group.children.forEach(function(obj) {
+    if (obj.geometry && obj.geometry.type === 'CylinderGeometry' && obj.material === postMat) layers.structure.objs.push(obj);
+    if (obj.material === roofMat || obj.material === wallLowMat || obj.material === wallHighMat || obj.material === endMat) layers.structure.objs.push(obj);
+    if (obj.geometry && obj.geometry.type === 'BufferGeometry' && obj.material === dripMat) layers.drips.objs.push(obj);
+  });
+  interactiveMeshes.forEach(function(m) {
+    if (m.userData.kind === 'sensor') {
+      var key = sensorMetaKey(m.userData.id);
+      if (key === 'sensor_humedad') layers.humedad.objs.push(m);
+      if (key === 'sensor_dht22') layers.dht22.objs.push(m);
+    }
+  });
+
+  var toggleWrap = document.getElementById('layerToggles');
+  var legendWrap = document.getElementById('legend');
+  Object.keys(layers).forEach(function(key) {
+    var l = layers[key];
+    var chip = document.createElement('div');
+    chip.className = 'toggle-chip active';
+    chip.innerHTML = '<span class="toggle-dot" style="background:' + l.color + '"></span>' + l.label;
+    chip.addEventListener('click', function() {
+      l.visible = l.visible === false ? true : false;
+      var vis = l.visible !== false;
+      chip.classList.toggle('active', vis);
+      l.objs.forEach(function(o) { o.visible = vis; });
+    });
+    toggleWrap.appendChild(chip);
+
+    var legendItem = document.createElement('div');
+    legendItem.className = 'legend-item';
+    legendItem.innerHTML = '<span class="legend-swatch dot" style="background:' + l.color + '"></span>' + l.label;
+    legendWrap.appendChild(legendItem);
+  });
+
+  // ---- Resize ----
+  function onResize() {
+    var w = wrap.clientWidth, h = wrap.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+  window.addEventListener('resize', onResize);
+
+  // ---- Animate ----
+  function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+</script>
+</body>
+</html>
